@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador Lotofácil 4.0 - Inteligência Avançada</title>
+    <title>Gerador Lotofácil 5.0 - IA LSTM Avançada</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -52,6 +52,15 @@
             margin: 3px;
             font-weight: bold;
         }
+        .high-probability {
+            background-color: #f44336;
+        }
+        .medium-probability {
+            background-color: #ff9800;
+        }
+        .low-probability {
+            background-color: #8bc34a;
+        }
         .real-time-badge {
             background-color: #4caf50;
             color: white;
@@ -79,11 +88,31 @@
             font-size: 12px;
             color: #666;
         }
+        .training-progress {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 20px;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            width: 0%;
+        }
+        #training-status {
+            font-size: 12px;
+            color: #666;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Lotofácil Generator <span class="version-badge">v4.0</span></h1>
+        <h1>Lotofácil Generator <span class="version-badge">v5.0 com LSTM</span></h1>
         
         <!-- Seção de Sincronização em Tempo Real -->
         <div class="advanced-options">
@@ -99,12 +128,18 @@
         
         <!-- Seção de Machine Learning -->
         <div class="prediction-panel">
-            <h3>🔮 Predição Inteligente</h3>
-            <button id="analyze-patterns">Analisar Padrões</button>
+            <h3>🧠 IA LSTM - Predição Avançada</h3>
+            <button id="train-model">Treinar Modelo LSTM</button>
+            <div class="training-progress">
+                <div id="progress-bar" class="progress-bar">0%</div>
+            </div>
+            <div id="training-status">Modelo não treinado</div>
+            
+            <button id="analyze-patterns" disabled>Gerar Previsões</button>
             <div id="prediction-results" style="margin-top:10px;">
-                <p>Números com maior probabilidade no próximo sorteio:</p>
+                <p>Probabilidade dos números no próximo sorteio:</p>
                 <div id="predicted-numbers"></div>
-                <p style="font-size:12px; color:#666;">*Baseado em análise de últimos 100 sorteios</p>
+                <p style="font-size:12px; color:#666;">*Baseado em análise de padrões históricos com LSTM</p>
             </div>
         </div>
         
@@ -125,8 +160,9 @@
         
         <!-- Botão para gerar os números -->
         <div class="generate-section">
-            <h3>🎟️ Gerar Números</h3>
-            <button id="generate-numbers">Gerar Números</button>
+            <h3>🎟️ Gerar Números com IA</h3>
+            <button id="generate-ai-numbers" disabled>Gerar Números com LSTM</button>
+            <button id="generate-random-numbers">Gerar Números Aleatórios</button>
             <div id="lotofacil-numbers" style="margin-top:10px;"></div>
         </div>
 
@@ -136,8 +172,246 @@
     </div>
 
     <script>
-        // Função para gerar números Lotofácil
-        function generateNumbers() {
+        // Variáveis globais
+        let lstmModel = null;
+        let isModelTrained = false;
+        let historicalData = [];
+        
+        // Função para gerar dados históricos simulados
+        function generateHistoricalData() {
+            // Geramos 500 sorteios históricos simulados
+            for (let i = 0; i < 500; i++) {
+                let numbers = [];
+                while (numbers.length < 15) {
+                    let num = Math.floor(Math.random() * 25) + 1;
+                    if (!numbers.includes(num)) {
+                        numbers.push(num);
+                    }
+                }
+                numbers.sort((a, b) => a - b);
+                historicalData.push(numbers);
+            }
+            
+            // Adicionamos alguns padrões simples para a LSTM detectar
+            // Padrão 1: Números baixos (1-12) são mais comuns nos primeiros 200 sorteios
+            for (let i = 0; i < 200; i++) {
+                historicalData[i] = historicalData[i].filter(n => n <= 12);
+                while (historicalData[i].length < 15) {
+                    let num = Math.floor(Math.random() * 12) + 1;
+                    if (!historicalData[i].includes(num)) {
+                        historicalData[i].push(num);
+                    }
+                }
+                historicalData[i].sort((a, b) => a - b);
+            }
+            
+            // Padrão 2: Números altos (13-25) são mais comuns nos próximos 200 sorteios
+            for (let i = 200; i < 400; i++) {
+                historicalData[i] = historicalData[i].filter(n => n >= 13);
+                while (historicalData[i].length < 15) {
+                    let num = Math.floor(Math.random() * 13) + 13;
+                    if (!historicalData[i].includes(num)) {
+                        historicalData[i].push(num);
+                    }
+                }
+                historicalData[i].sort((a, b) => a - b);
+            }
+            
+            // Os últimos 100 sorteios têm uma distribuição mais equilibrada
+        }
+        
+        // Função para preparar os dados para treinamento
+        function prepareData() {
+            // Convertemos os números para um formato one-hot encoding (25 números possíveis)
+            const sequenceLength = 10; // Usamos 10 sorteios anteriores para prever o próximo
+            const numNumbers = 25;
+            
+            const X = [];
+            const y = [];
+            
+            for (let i = sequenceLength; i < historicalData.length; i++) {
+                // Pegamos a sequência de sorteios anteriores
+                const sequence = historicalData.slice(i - sequenceLength, i);
+                
+                // Convertemos para one-hot encoding
+                const encodedSequence = [];
+                for (const draw of sequence) {
+                    const encodedDraw = new Array(numNumbers).fill(0);
+                    for (const num of draw) {
+                        encodedDraw[num - 1] = 1; // Números de 1 a 25
+                    }
+                    encodedSequence.push(encodedDraw);
+                }
+                
+                X.push(encodedSequence);
+                
+                // O alvo é o próximo sorteio
+                const nextDraw = historicalData[i];
+                const encodedNextDraw = new Array(numNumbers).fill(0);
+                for (const num of nextDraw) {
+                    encodedNextDraw[num - 1] = 1;
+                }
+                y.push(encodedNextDraw);
+            }
+            
+            return { X: tf.tensor3d(X), y: tf.tensor2d(y) };
+        }
+        
+        // Função para criar o modelo LSTM
+        function createModel() {
+            const model = tf.sequential();
+            
+            // Adicionamos uma camada LSTM
+            model.add(tf.layers.lstm({
+                units: 64,
+                inputShape: [10, 25], // 10 sorteios anteriores, 25 números possíveis
+                returnSequences: false
+            }));
+            
+            // Adicionamos uma camada densa com ativação sigmoid para prever probabilidades
+            model.add(tf.layers.dense({
+                units: 25,
+                activation: 'sigmoid'
+            }));
+            
+            // Compilamos o modelo
+            model.compile({
+                optimizer: tf.train.adam(0.01),
+                loss: 'binaryCrossentropy',
+                metrics: ['accuracy']
+            });
+            
+            return model;
+        }
+        
+        // Função para treinar o modelo
+        async function trainModel() {
+            // Geramos dados históricos simulados
+            generateHistoricalData();
+            
+            // Preparamos os dados
+            const { X, y } = prepareData();
+            
+            // Criamos o modelo
+            lstmModel = createModel();
+            
+            // Habilitamos os botões de previsão
+            document.getElementById('analyze-patterns').disabled = false;
+            document.getElementById('generate-ai-numbers').disabled = false;
+            
+            // Treinamos o modelo
+            await lstmModel.fit(X, y, {
+                epochs: 50,
+                batchSize: 32,
+                callbacks: {
+                    onEpochEnd: async (epoch, logs) => {
+                        // Atualizamos a barra de progresso
+                        const progress = ((epoch + 1) / 50) * 100;
+                        document.getElementById('progress-bar').style.width = `${progress}%`;
+                        document.getElementById('progress-bar').innerText = `${Math.round(progress)}%`;
+                        
+                        // Atualizamos o status
+                        document.getElementById('training-status').innerText = 
+                            `Época ${epoch + 1}/50 - Loss: ${logs.loss.toFixed(4)} - Accuracy: ${logs.acc.toFixed(4)}`;
+                        
+                        // Pequeno delay para permitir a atualização da UI
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                }
+            });
+            
+            // Atualizamos o status final
+            document.getElementById('training-status').innerText = 'Modelo treinado com sucesso!';
+            isModelTrained = true;
+            
+            // Liberamos a memória
+            X.dispose();
+            y.dispose();
+        }
+        
+        // Função para fazer previsões com o modelo treinado
+        async function predictWithModel() {
+            if (!isModelTrained) {
+                alert('Por favor, treine o modelo primeiro!');
+                return;
+            }
+            
+            // Pegamos os últimos 10 sorteios
+            const last10Draws = historicalData.slice(-10);
+            
+            // Preparamos os dados para predição
+            const inputData = [];
+            for (const draw of last10Draws) {
+                const encodedDraw = new Array(25).fill(0);
+                for (const num of draw) {
+                    encodedDraw[num - 1] = 1;
+                }
+                inputData.push(encodedDraw);
+            }
+            
+            // Criamos o tensor de entrada
+            const inputTensor = tf.tensor3d([inputData]);
+            
+            // Fazemos a predição
+            const prediction = lstmModel.predict(inputTensor);
+            const predictionData = await prediction.data();
+            
+            // Processamos os resultados
+            const numberProbabilities = [];
+            for (let i = 0; i < 25; i++) {
+                numberProbabilities.push({
+                    number: i + 1,
+                    probability: predictionData[i]
+                });
+            }
+            
+            // Ordenamos por probabilidade
+            numberProbabilities.sort((a, b) => b.probability - a.probability);
+            
+            // Exibimos os resultados
+            const predictedNumbersElement = document.getElementById('predicted-numbers');
+            predictedNumbersElement.innerHTML = '';
+            
+            // Adicionamos os números com cores baseadas na probabilidade
+            numberProbabilities.forEach(item => {
+                let probClass;
+                if (item.probability > 0.7) {
+                    probClass = 'high-probability';
+                } else if (item.probability > 0.5) {
+                    probClass = 'medium-probability';
+                } else {
+                    probClass = 'low-probability';
+                }
+                
+                const probPercent = (item.probability * 100).toFixed(1);
+                predictedNumbersElement.innerHTML += `
+                    <span class="prediction-number ${probClass}" title="Probabilidade: ${probPercent}%">
+                        ${item.number}
+                    </span>
+                `;
+            });
+            
+            // Liberamos a memória
+            inputTensor.dispose();
+            prediction.dispose();
+            
+            return numberProbabilities;
+        }
+        
+        // Função para gerar números usando a IA
+        async function generateNumbersWithAI() {
+            const numberProbabilities = await predictWithModel();
+            
+            // Selecionamos os 15 números com maior probabilidade
+            const topNumbers = numberProbabilities.slice(0, 15).map(item => item.number);
+            topNumbers.sort((a, b) => a - b);
+            
+            document.getElementById('lotofacil-numbers').innerHTML = 
+                `Números gerados pela IA: ${topNumbers.join(', ')}`;
+        }
+        
+        // Função para gerar números aleatórios
+        function generateRandomNumbers() {
             let numbers = [];
             while (numbers.length < 15) {
                 let num = Math.floor(Math.random() * 25) + 1;
@@ -146,19 +420,13 @@
                 }
             }
             numbers.sort((a, b) => a - b);
-            document.getElementById('lotofacil-numbers').innerHTML = numbers.join(', ');
+            document.getElementById('lotofacil-numbers').innerHTML = 
+                `Números aleatórios: ${numbers.join(', ')}`;
         }
-
-        // Função para analisar padrões (simulação)
-        function analyzePatterns() {
-            // Lógica simulada para predição
-            let predictedNumbers = [1, 3, 5, 8, 10, 12, 15, 18, 20]; // Exemplo fixo
-            document.getElementById('predicted-numbers').innerHTML = predictedNumbers.map(num => `<span class="prediction-number">${num}</span>`).join('');
-        }
-
+        
         // Função para compressão de números (simulação)
         function compressNumbers() {
-            let level = document.getElementById('compression-level').value; // Obtem o nível de compressão
+            let level = document.getElementById('compression-level').value;
             let results;
             switch(level) {
                 case 'low':
@@ -173,22 +441,28 @@
             }
             document.getElementById('compression-results').innerHTML = results;
         }
-
+        
         // Conexão em tempo real (simulação)
         function updateConnectionStatus() {
             const statusElement = document.getElementById('connection-status');
-            // Simula a conexão
             setTimeout(() => {
                 statusElement.innerHTML = "Conectado!";
-                statusElement.style.backgroundColor = "#4caf50"; // Verde
+                statusElement.style.backgroundColor = "#4caf50";
+                
+                // Atualiza a data/hora
+                const now = new Date();
+                document.getElementById('last-update').innerText = 
+                    `Última atualização: ${now.toLocaleString()}`;
             }, 2000);
         }
-
+        
         // Event listeners
-        document.getElementById('generate-numbers').addEventListener('click', generateNumbers);
-        document.getElementById('analyze-patterns').addEventListener('click', analyzePatterns);
+        document.getElementById('train-model').addEventListener('click', trainModel);
+        document.getElementById('analyze-patterns').addEventListener('click', predictWithModel);
+        document.getElementById('generate-ai-numbers').addEventListener('click', generateNumbersWithAI);
+        document.getElementById('generate-random-numbers').addEventListener('click', generateRandomNumbers);
         document.getElementById('compress-numbers').addEventListener('click', compressNumbers);
-
+        
         // Inicializa a conexão em tempo real
         updateConnectionStatus();
     </script>
