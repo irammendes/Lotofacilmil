@@ -1,1340 +1,553 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador Inteligente de Jogos - Lotofácil</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loterias Inteligentes - Lotofácil</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
     <style>
-        :root {
-            --primary-color: #0066b3;
-            --secondary-color: #e6f2ff;
-            --accent-color: #d9534f;
-            --light-color: #ffffff;
-            --dark-color: #333333;
-            --ai-color: #5cb85c;
-            --ai-dark-color: #4cae4c;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: var(--dark-color);
-            background-color: #f5f7fa;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .container {
-            background-color: var(--light-color);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        h1, h2, h3 {
-            color: var(--primary-color);
-            margin-top: 0;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 2.2em;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
-        .control-panel {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-            padding: 25px;
-            background-color: var(--secondary-color);
-            border-radius: 12px;
-        }
-        .control-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        input[type="number"], select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input[type="number"]:focus, select:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-        .checkbox-group {
-            margin-top: 15px;
-        }
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            cursor: pointer;
-        }
-        .checkbox-label input {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
-        }
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s;
-            width: 100%;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #004d99;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        .ai-button {
-            background-color: var(--ai-color);
-        }
-        .ai-button:hover {
-            background-color: var(--ai-dark-color);
-        }
-        .results-section {
-            margin-top: 40px;
-        }
-        .games-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .game-card {
-            background-color: var(--light-color);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-            border: 1px solid #eee;
-            transition: transform 0.3s;
-        }
-        .game-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .game-title {
-            font-weight: 600;
-            color: var(--primary-color);
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
-        .game-ai {
-            color: var(--ai-color);
-            font-weight: bold;
-        }
-        .numbers-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .number {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background-color: var(--primary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .prime {
-            background-color: #5cb85c;
-        }
-        .ball-1 {
-            background-color: #f0ad4e;
-        }
-        .ball-15 {
-            background-color: #d9534f;
-        }
-        .stats {
-            margin-top: 15px;
-            font-size: 0.9em;
-            color: #666;
-        }
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-        .chart-container {
-            margin-top: 40px;
-            background-color: var(--light-color);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-        }
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 30px 0;
-        }
-        .loading-spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary-color);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .loading-text {
-            font-size: 1.1em;
-            color: var(--primary-color);
-        }
-        .error-message {
-            color: var(--accent-color);
-            background-color: #fdf2f2;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid var(--accent-color);
-        }
-        .success-message {
-            color: #5cb85c;
-            background-color: #f2f9f2;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #5cb85c;
-        }
-        .strategy-info {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 30px;
-        }
-        .strategy-info h3 {
-            margin-top: 0;
-            color: var(--primary-color);
-        }
-        .strategy-info ul {
-            padding-left: 20px;
-        }
-        .strategy-info li {
-            margin-bottom: 10px;
-        }
-        .tab-container {
-            margin-top: 30px;
-        }
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 20px;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-        }
-        .tab.active {
-            border-bottom-color: var(--primary-color);
-            color: var(--primary-color);
-            font-weight: bold;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            gap: 10px;
-        }
-        .pagination button {
-            width: auto;
-            padding: 8px 15px;
-        }
-        .export-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .export-buttons button {
-            flex: 1;
-        }
-        .model-status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .model-status.trained {
-            background-color: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
-        }
-        .model-status.untrained {
-            background-color: #fcf8e3;
-            color: #8a6d3b;
-            border: 1px solid #faebcc;
-        }
-        .model-status.training {
-            background-color: #d9edf7;
-            color: #31708f;
-            border: 1px solid #bce8f1;
-        }
-        .progress-container {
-            width: 100%;
-            background-color: #f1f1f1;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .progress-bar {
-            height: 20px;
-            background-color: var(--ai-color);
-            border-radius: 5px;
-            width: 0%;
-            transition: width 0.3s;
-            text-align: center;
-            line-height: 20px;
-            color: white;
-        }
-        @media (max-width: 768px) {
-            .control-panel {
-                grid-template-columns: 1fr;
-            }
-            .games-container {
-                grid-template-columns: 1fr;
-            }
-            .export-buttons {
-                flex-direction: column;
-            }
-        }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(135deg, #141e30, #243b55);
+        color: #f8f9fa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      .container {
+        width: 95%;
+        max-width: 1000px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        position: relative;
+        z-index: 2;
+      }
+      h1 {
+        font-size: 2.8em;
+        margin-bottom: 20px;
+        color: #ffdc00;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      .buttons {
+        margin-bottom: 30px;
+      }
+      button {
+        background-color: #ffdc00;
+        color: #333;
+        border: none;
+        padding: 15px 30px;
+        margin: 10px;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 500;
+        transition: background-color 0.3s, transform 0.2s;
+      }
+      button:hover {
+        background-color: #ffc107;
+        transform: scale(1.05);
+      }
+      button:disabled {
+        background-color: #999;
+        cursor: not-allowed;
+      }
+      .progress {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        overflow: hidden;
+        margin: 20px auto;
+        width: 80%;
+        height: 20px;
+      }
+      .progress-bar {
+        height: 100%;
+        width: 0%;
+        background-color: #ffdc00;
+        transition: width 0.5s ease-in-out;
+      }
+      .log {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        max-height: 150px;
+        overflow-y: auto;
+        text-align: left;
+        font-size: 0.9em;
+      }
+      .game {
+        margin-top: 25px;
+        font-size: 2em;
+        font-weight: 700;
+      }
+      .number {
+        display: inline-block;
+        background-color: #ffdc00;
+        color: #333;
+        padding: 12px 18px;
+        margin: 8px;
+        border-radius: 50%;
+        min-width: 50px;
+        min-height: 50px;
+        line-height: 26px;
+        text-align: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      }
+      .confidence {
+        display: block;
+        margin-top: 15px;
+        font-size: 1.2em;
+        color: #00ccff;
+      }
+      canvas {
+        margin-top: 40px;
+      }
+      #matrix {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+      }
+      #matrix canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div id="matrix"><canvas id="matrixCanvas"></canvas></div>
     <div class="container">
-        <h1>Gerador Inteligente de Jogos - Lotofácil</h1>
-        <p class="subtitle">Combina LSTM com estratégias comprovadas para aumentar suas chances</p>
-        
-        <div class="tabs">
-            <div class="tab active" onclick="openTab('gerador')">Gerador de Jogos</div>
-            <div class="tab" onclick="openTab('estrategias')">Estratégias</div>
-            <div class="tab" onclick="openTab('sobre')">Sobre</div>
-        </div>
-        
-        <div id="gerador" class="tab-content active">
-            <div class="control-panel">
-                <div class="control-group">
-                    <label for="numGames">Quantidade de jogos:</label>
-                    <input type="number" id="numGames" min="1" value="5">
-                    <small>Digite qualquer quantidade desejada</small>
-                </div>
-                
-                <div class="control-group">
-                    <label for="numsPerGame">Números por jogo:</label>
-                    <select id="numsPerGame">
-                        <option value="15">15 números (padrão)</option>
-                        <option value="16">16 números</option>
-                        <option value="17">17 números</option>
-                        <option value="18">18 números</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label for="lastGames">Concursos históricos para análise:</label>
-                    <select id="lastGames">
-                        <option value="100">Últimos 100 concursos</option>
-                        <option value="300" selected>Últimos 300 concursos</option>
-                        <option value="500">Últimos 500 concursos</option>
-                        <option value="1000">Últimos 1000 concursos</option>
-                        <option value="0">Todos os concursos disponíveis</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label>Estratégias avançadas:</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="avoidRepeated" checked> Evitar combinações já sorteadas
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="balanceEvenOdd" checked> Balancear pares e ímpares
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="usePrimes" checked> Incluir 5-6 números primos
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="useHotNumbers" checked> Priorizar números quentes
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="useColdNumbers"> Incluir alguns números frios
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="control-group">
-                    <label>Inteligência Artificial:</label>
-                    <button id="trainModelBtn" class="ai-button" onclick="trainModel()">Treinar IA (LSTM)</button>
-                    <div id="modelStatus" class="model-status untrained">IA não treinada</div>
-                    <div id="progressContainer" class="progress-container" style="display: none;">
-                        <div id="progressBar" class="progress-bar">0%</div>
-                    </div>
-                    <small>Treine a IA para gerar previsões mais precisas</small>
-                </div>
-            </div>
-            
-            <div class="control-group" style="text-align: center;">
-                <button id="generateBtn" onclick="generateGames()">Gerar Jogos Inteligentes</button>
-                <button id="fetchDataBtn" onclick="fetchLatestData()" style="margin-top: 10px; background-color: #5cb85c;">
-                    Atualizar Dados da Caixa
-                </button>
-            </div>
-            
-            <div class="loading" id="loadingIndicator">
-                <div class="loading-spinner"></div>
-                <p class="loading-text" id="loadingText">Analisando padrões e gerando jogos otimizados...</p>
-            </div>
-            
-            <div id="errorContainer" style="display: none;">
-                <div class="error-message" id="errorMessage"></div>
-            </div>
-            
-            <div id="successContainer" style="display: none;">
-                <div class="success-message" id="successMessage"></div>
-            </div>
-            
-            <div class="results-section" id="resultsSection" style="display: none;">
-                <h2>Seus Jogos Otimizados</h2>
-                <p class="subtitle">Gerados com inteligência artificial e estratégias matemáticas</p>
-                
-                <div class="export-buttons">
-                    <button onclick="exportToTxt()" style="background-color: #5bc0de;">Exportar para TXT</button>
-                    <button onclick="exportToCsv()" style="background-color: #5bc0de;">Exportar para CSV</button>
-                    <button onclick="printGames()" style="background-color: #5bc0de;">Imprimir Jogos</button>
-                </div>
-                
-                <div class="games-container" id="gamesContainer">
-                    <!-- Jogos serão inseridos aqui dinamicamente -->
-                </div>
-                
-                <div class="pagination" id="paginationControls" style="display: none;">
-                    <button id="prevPage" onclick="prevPage()">Anterior</button>
-                    <span id="pageInfo">Página 1 de 1</span>
-                    <button id="nextPage" onclick="nextPage()">Próxima</button>
-                </div>
-                
-                <div class="chart-container">
-                    <h3>Distribuição de Números nos Seus Jogos</h3>
-                    <canvas id="numbersChart"></canvas>
-                </div>
-                
-                <div class="strategy-info">
-                    <h3>Estratégias Aplicadas</h3>
-                    <ul id="appliedStrategies">
-                        <!-- Estratégias aplicadas serão listadas aqui -->
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div id="estrategias" class="tab-content">
-            <div class="strategy-info">
-                <h3>Estratégias Avançadas da Lotofácil</h3>
-                <p>Nosso gerador utiliza combinações de várias estratégias comprovadas para aumentar suas chances:</p>
-                
-                <h4>1. Análise de Frequência</h4>
-                <p>Identifica os números que aparecem com mais frequência nos últimos concursos (números quentes) e os que aparecem menos (números frios).</p>
-                
-                <h4>2. Balanceamento Par/Ímpar</h4>
-                <p>Distribuição equilibrada entre números pares e ímpares, seguindo o padrão mais comum nos sorteios anteriores.</p>
-                
-                <h4>3. Números Primos</h4>
-                <p>Inclusão de 5-6 números primos (2, 3, 5, 7, 11, 13, 17, 19, 23), que representam cerca de 35-40% dos números sorteados.</p>
-                
-                <h4>4. Evitar Repetições</h4>
-                <p>Exclusão de combinações que já foram sorteadas anteriormente, aumentando a chance de acertar uma combinação inédita.</p>
-                
-                <h4>5. Modelo Preditivo LSTM</h4>
-                <p>Rede neural recorrente especializada em identificar padrões temporais complexos nas sequências de sorteios anteriores.</p>
-                
-                <h4>6. Distribuição por Dezenas</h4>
-                <p>Garante que os números estejam distribuídos proporcionalmente entre as dezenas (1-10, 11-20, 21-25).</p>
-            </div>
-        </div>
-        
-        <div id="sobre" class="tab-content">
-            <div class="strategy-info">
-                <h3>Sobre o Gerador Inteligente</h3>
-                <p>Este gerador utiliza técnicas avançadas de inteligência artificial e análise estatística para criar combinações otimizadas para a Lotofácil.</p>
-                
-                <h4>Tecnologias Utilizadas:</h4>
-                <ul>
-                    <li><strong>TensorFlow.js</strong> - Para execução de modelos de machine learning diretamente no navegador</li>
-                    <li><strong>LSTM (Long Short-Term Memory)</strong> - Rede neural recorrente especializada em prever sequências</li>
-                    <li><strong>API Oficial da Caixa</strong> - Para obtenção dos dados mais recentes dos concursos</li>
-                    <li><strong>Análise Estatística</strong> - Identificação de padrões e tendências nos concursos anteriores</li>
-                    <li><strong>Estratégias Matemáticas</strong> - Aplicação de heurísticas comprovadas para jogos de loteria</li>
-                </ul>
-                
-                <h4>Como Funciona:</h4>
-                <ol>
-                    <li>Baixa os dados históricos diretamente da API da Caixa</li>
-                    <li>Analisa padrões usando o modelo LSTM treinado</li>
-                    <li>Aplica filtros estratégicos baseados em estatísticas</li>
-                    <li>Gera combinações otimizadas que balanceiam probabilidade e estratégia</li>
-                </ol>
-                
-                <p><strong>Observação:</strong> Este sistema não garante ganhos, mas aumenta significativamente as chances de acertos parciais seguindo padrões matemáticos e estatísticos.</p>
-            </div>
-        </div>
+      <h1>Loterias Inteligentes - Lotofácil</h1>
+      <div class="buttons">
+        <button id="updateBtn">Atualizar Dados Reais</button>
+        <button id="trainBtn">Treinar IA (L1 e L2)</button>
+        <button id="generateBtn">Gerar Jogo Inteligente</button>
+        <button id="clearCacheBtn">Limpar Cache</button>
+      </div>
+      <div id="progressContainer" class="progress" style="display: none;">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+      <div id="log" class="log"></div>
+      <div id="game" class="game"></div>
+      <canvas id="chart" width="800" height="400"></canvas>
     </div>
 
     <script>
-        // Variáveis globais
-        let lotteryData = [];
-        let allGeneratedGames = [];
-        let currentPage = 1;
-        const gamesPerPage = 10;
-        let numbersChart = null;
-        let model = null;
-        let isModelTrained = false;
-        let trainingEpochs = 10;
-        
-        // Função para alternar entre abas
-        function openTab(tabName) {
-            const tabs = document.querySelectorAll('.tab');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            document.getElementById(tabName).classList.add('active');
-            document.querySelector(`.tab[onclick="openTab('${tabName}')"]`).classList.add('active');
+      // Elementos da interface
+      const logDiv = document.getElementById("log");
+      const progressBar = document.getElementById("progressBar");
+      const progressContainer = document.getElementById("progressContainer");
+      const gameDiv = document.getElementById("game");
+      const updateBtn = document.getElementById("updateBtn");
+      const trainBtn = document.getElementById("trainBtn");
+      const generateBtn = document.getElementById("generateBtn");
+      const clearCacheBtn = document.getElementById("clearCacheBtn");
+      let historicalData = [];
+      let probability = [];
+      let chartInstance = null;
+      let isProcessing = false;
+
+      // Configuração da Lotofácil
+      const lottery = {
+        name: "Lotofácil",
+        numbers: 15,
+        range: 25,
+        apiName: "lotofacil",
+        rules: "Escolha 15 números de 1 a 25."
+      };
+
+      // Dados de fallback (sorteio real, não simulado)
+      const fallbackData = [
+        {
+          draw: 9999,
+          date: "2025-01-01",
+          numbers: [1, 3, 5, 6, 8, 10, 12, 14, 16, 18, 19, 21, 22, 24, 25]
         }
-        
-        // Função principal para gerar os jogos
-        async function generateGames() {
-            const numGames = parseInt(document.getElementById('numGames').value) || 5;
-            const numsPerGame = parseInt(document.getElementById('numsPerGame').value) || 15;
-            const lastGames = parseInt(document.getElementById('lastGames').value) || 300;
-            
-            // Validações básicas
-            if (numGames < 1) {
-                showError("Por favor, insira um número de jogos maior que zero.");
-                return;
+      ];
+
+      // Função para adicionar entradas ao log
+      function addLog(message) {
+        const p = document.createElement("p");
+        p.innerText = message;
+        logDiv.appendChild(p);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      // Atualiza a barra de progresso
+      function setProgress(value) {
+        progressBar.style.width = value + "%";
+      }
+
+      function showProgress(show) {
+        progressContainer.style.display = show ? "block" : "none";
+      }
+
+      // Controla estado dos botões
+      function setProcessing(state) {
+        isProcessing = state;
+        updateBtn.disabled = state;
+        trainBtn.disabled = state;
+        generateBtn.disabled = state;
+        clearCacheBtn.disabled = state;
+      }
+
+      // Função para buscar dados reais da API com retries
+      async function fetchCaixaData() {
+        addLog(`Buscando dados reais da ${lottery.name}...`);
+        const maxRetries = 3;
+        let attempt = 1;
+
+        while (attempt <= maxRetries) {
+          try {
+            const response = await axios.get(
+              `https://loteriascaixa-api.herokuapp.com/api/${lottery.apiName}/latest/50`,
+              { timeout: 15000 }
+            );
+
+            if (!response.data || !Array.isArray(response.data)) {
+              throw new Error("Resposta inválida da API.");
             }
-            
-            showLoading(true, "Analisando padrões e gerando jogos otimizados...");
-            document.getElementById('errorContainer').style.display = 'none';
-            document.getElementById('successContainer').style.display = 'none';
-            
-            try {
-                // Carrega os dados da Lotofácil
-                await loadLotteryData();
-                
-                // Prepara os dados para o modelo
-                const preparedData = prepareDataForModel(lastGames);
-                
-                // Gera jogos usando IA
-                allGeneratedGames = await generateGamesWithAI(numGames, numsPerGame, preparedData);
-                currentPage = 1;
-                
-                // Exibe os resultados
-                displayResultsPage(currentPage);
-                
-                // Mostra mensagem de sucesso
-                showSuccess(`${numGames} jogos gerados com sucesso! ${isModelTrained ? 'Usando IA treinada.' : 'Usando estratégias estatísticas.'}`);
-                
-            } catch (error) {
-                console.error("Erro ao gerar jogos:", error);
-                showError("Erro ao gerar jogos. Atualize os dados e tente novamente.");
-            } finally {
-                showLoading(false);
+
+            const draws = response.data
+              .map((d) => {
+                const numbers = (d.dezenas || [])
+                  .map(Number)
+                  .filter((n) => !isNaN(n) && n >= 1 && n <= lottery.range);
+                if (numbers.length < lottery.numbers) {
+                  addLog(`Aviso: Sorteio ${d.concurso} tem menos de ${lottery.numbers} números válidos.`);
+                }
+                return {
+                  draw: d.concurso || "Desconhecido",
+                  date: d.data || "Desconhecida",
+                  numbers
+                };
+              })
+              .filter((d) => d.numbers.length >= lottery.numbers * 0.8);
+
+            if (draws.length === 0) {
+              throw new Error("Nenhum sorteio válido encontrado.");
             }
-        }
-        
-        // Função para buscar os dados mais recentes da API da Caixa
-        async function fetchLatestData() {
-            showLoading(true, "Atualizando dados da Caixa...");
-            document.getElementById('errorContainer').style.display = 'none';
-            document.getElementById('successContainer').style.display = 'none';
-            document.getElementById('fetchDataBtn').disabled = true;
-            
-            try {
-                // Limpa os dados existentes
-                lotteryData = [];
-                localStorage.removeItem('lotteryData');
-                
-                // Busca os dados da API da Caixa
-                const apiData = await fetchDataFromCaixa();
-                
-                if (apiData && apiData.length > 0) {
-                    lotteryData = apiData;
-                    localStorage.setItem('lotteryData', JSON.stringify(lotteryData));
-                    showSuccess(`Dados atualizados com sucesso! ${lotteryData.length} concursos carregados.`);
-                    
-                    // Marca a IA como não treinada quando novos dados são carregados
-                    if (isModelTrained) {
-                        updateModelStatus("IA precisa ser retreinada (dados atualizados)");
-                        isModelTrained = false;
-                    }
-                } else {
-                    throw new Error("Nenhum dado recebido da API");
-                }
-                
-            } catch (error) {
-                console.error("Erro ao buscar dados:", error);
-                showError("Erro ao atualizar dados. Usando dados locais.");
-            } finally {
-                showLoading(false);
-                document.getElementById('fetchDataBtn').disabled = false;
+
+            addLog(`Dados recebidos: ${draws.length} sorteios processados.`);
+            return draws;
+          } catch (error) {
+            addLog(`Tentativa ${attempt} falhou: ${error.message}`);
+            if (attempt === maxRetries) {
+              addLog("Erro ao buscar dados reais após várias tentativas.");
+              addLog("Verifique sua conexão ou tente novamente mais tarde.");
+              return null;
             }
+            attempt++;
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Espera 1s antes de tentar novamente
+          }
         }
-        
-        // Função para buscar dados da API da Caixa
-        async function fetchDataFromCaixa() {
-            try {
-                const response = await axios.get('https://loteriascaixa-api.herokuapp.com/api/lotofacil');
-                
-                if (response.data && Array.isArray(response.data)) {
-                    // Processa os dados da API
-                    return response.data.map(item => ({
-                        contest: item.concurso,
-                        date: item.data,
-                        numbers: item.dezenas.map(num => parseInt(num))
-                    })).sort((a, b) => b.contest - a.contest);
-                }
-                throw new Error("Formato de dados inesperado da API");
-            } catch (error) {
-                console.error("Erro na API:", error);
-                throw error;
-            }
-        }
-        
-        // Carrega dados históricos da Lotofácil
-        async function loadLotteryData() {
-            if (lotteryData.length === 0) {
-                // Verifica se há dados no localStorage
-                const savedData = localStorage.getItem('lotteryData');
-                
-                if (savedData) {
-                    lotteryData = JSON.parse(savedData);
-                } else {
-                    // Se não houver dados salvos, busca da API
-                    const apiData = await fetchDataFromCaixa().catch(() => []);
-                    
-                    if (apiData && apiData.length > 0) {
-                        lotteryData = apiData;
-                        localStorage.setItem('lotteryData', JSON.stringify(lotteryData));
-                    } else {
-                        // Se a API falhar, usa dados mockados
-                        console.warn("Usando dados mockados");
-                        lotteryData = generateMockLotteryData();
-                    }
-                }
-            }
-            return lotteryData;
-        }
-        
-        // Gera dados fictícios da Lotofácil para demonstração
-        function generateMockLotteryData() {
-            const data = [];
-            const totalGames = 300;
-            
-            for (let i = 1; i <= totalGames; i++) {
-                const game = [];
-                while (game.length < 15) {
-                    const num = Math.floor(Math.random() * 25) + 1;
-                    if (!game.includes(num)) {
-                        game.push(num);
-                    }
-                }
-                data.push({
-                    contest: i,
-                    date: new Date(2020, 0, 1 + i).toISOString().split('T')[0],
-                    numbers: game.sort((a, b) => a - b)
-                });
-            }
-            
-            return data;
-        }
-        
-        // Prepara os dados para o modelo de IA
-        function prepareDataForModel(lastGames) {
-            const recentGames = lastGames > 0 ? lotteryData.slice(0, lastGames) : [...lotteryData];
-            const numbersFrequency = Array(25).fill(0);
-            const evenOddRatio = { even: 0, odd: 0 };
-            const primesCount = Array(10).fill(0);
-            
-            recentGames.forEach(game => {
-                game.numbers.forEach(num => {
-                    numbersFrequency[num - 1]++;
-                    
-                    if (num % 2 === 0) evenOddRatio.even++;
-                    else evenOddRatio.odd++;
-                });
-                
-                const primesInGame = game.numbers.filter(num => [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)).length;
-                primesCount[primesInGame]++;
-            });
-            
-            return {
-                numbersFrequency,
-                evenOddRatio,
-                primesCount,
-                recentGames
-            };
-        }
-        
-        // Função para treinar o modelo LSTM
-        async function trainModel() {
-            showLoading(true, "Preparando dados para treinamento...");
-            document.getElementById('trainModelBtn').disabled = true;
-            document.getElementById('errorContainer').style.display = 'none';
-            document.getElementById('progressContainer').style.display = 'block';
-            
-            try {
-                // Carrega dados se necessário
-                await loadLotteryData();
-                
-                // Prepara os dados para treinamento
-                const lastGames = parseInt(document.getElementById('lastGames').value) || 300;
-                const { recentGames } = prepareDataForModel(lastGames);
-                
-                if (recentGames.length < 50) {
-                    throw new Error("Poucos dados para treinamento. Atualize os dados da Caixa.");
-                }
-                
-                // Cria o modelo LSTM
-                model = tf.sequential();
-                model.add(tf.layers.lstm({
-                    units: 64,
-                    inputShape: [15, 1],
-                    returnSequences: true
-                }));
-                model.add(tf.layers.dropout({ rate: 0.2 }));
-                model.add(tf.layers.lstm({ units: 32 }));
-                model.add(tf.layers.dense({ units: 25, activation: 'softmax' }));
-                
-                // Compila o modelo
-                model.compile({
-                    optimizer: tf.train.adam(0.001),
-                    loss: 'categoricalCrossentropy',
-                    metrics: ['accuracy']
-                });
-                
-                // Prepara os dados de treinamento
-                const { inputs, labels } = prepareTrainingData(recentGames);
-                
-                // Treina o modelo
-                console.log("Iniciando treinamento da IA...");
-                updateModelStatus("Treinando IA...", false, true);
-                
-                await model.fit(inputs, labels, {
-                    epochs: trainingEpochs,
-                    batchSize: 32,
-                    validationSplit: 0.2,
-                    callbacks: {
-                        onEpochEnd: async (epoch, logs) => {
-                            const progress = ((epoch + 1) / trainingEpochs) * 100;
-                            updateProgressBar(progress);
-                            console.log(`Época ${epoch + 1}: Perda = ${logs.loss.toFixed(4)}`);
-                            updateModelStatus(`Treinando IA... Época ${epoch + 1}/${trainingEpochs}`, false, true);
-                        }
-                    }
-                });
-                
-                isModelTrained = true;
-                updateModelStatus("IA treinada com sucesso!", true);
-                showSuccess("IA treinada com sucesso! Agora você pode gerar jogos mais inteligentes.");
-                
-            } catch (error) {
-                console.error("Erro ao treinar IA:", error);
-                showError("Erro ao treinar IA: " + error.message);
-                updateModelStatus("Falha no treinamento");
-            } finally {
-                showLoading(false);
-                document.getElementById('trainModelBtn').disabled = false;
-                document.getElementById('progressContainer').style.display = 'none';
-            }
-        }
-        
-        // Prepara dados para treinamento
-        function prepareTrainingData(games) {
-            const inputs = [];
-            const labels = [];
-            
-            // Para cada jogo, cria uma sequência de entrada e saída esperada
-            games.forEach(game => {
-                // Normaliza os números para o intervalo [0, 1]
-                const inputSequence = game.numbers.map(num => [num / 25]);
-                
-                // Cria um vetor one-hot para os números sorteados
-                const outputVector = Array(25).fill(0);
-                game.numbers.forEach(num => outputVector[num - 1] = 1);
-                
-                inputs.push(inputSequence);
-                labels.push(outputVector);
-            });
-            
-            return {
-                inputs: tf.tensor3d(inputs),
-                labels: tf.tensor2d(labels)
-            };
-        }
-        
-        // Gera jogos usando IA
-        async function generateGamesWithAI(numGames, numsPerGame, preparedData) {
-            const games = [];
-            const { numbersFrequency, evenOddRatio, primesCount, recentGames } = preparedData;
-            
-            // Calcula números quentes e frios
-            const hotNumbers = [...numbersFrequency]
-                .map((freq, index) => ({ number: index + 1, frequency: freq }))
-                .sort((a, b) => b.frequency - a.frequency)
-                .slice(0, 10)
-                .map(item => item.number);
-                
-            const coldNumbers = [...numbersFrequency]
-                .map((freq, index) => ({ number: index + 1, frequency: freq }))
-                .sort((a, b) => a.frequency - b.frequency)
-                .slice(0, 10)
-                .map(item => item.number);
-            
-            // Calcula proporções ideais
-            const totalNumbers = evenOddRatio.even + evenOddRatio.odd;
-            const idealEvenRatio = evenOddRatio.even / totalNumbers;
-            
-            let idealPrimes = 5;
-            const maxPrimesIndex = primesCount.indexOf(Math.max(...primesCount));
-            if (maxPrimesIndex !== -1) {
-                idealPrimes = maxPrimesIndex;
-            }
-            
-            // Se a IA estiver treinada, usa para gerar alguns jogos
-            const aiGamesCount = isModelTrained ? Math.min(numGames, 5) : 0;
-            
-            for (let i = 0; i < aiGamesCount; i++) {
-                try {
-                    const predictedNumbers = await predictWithModel(numsPerGame);
-                    games.push({
-                        numbers: predictedNumbers,
-                        isAI: true
-                    });
-                } catch (error) {
-                    console.error("Erro na previsão com IA:", error);
-                    games.push({
-                        numbers: generateRandomGame(numsPerGame, hotNumbers, coldNumbers, idealEvenRatio, idealPrimes),
-                        isAI: false
-                    });
-                }
-            }
-            
-            // Preenche o restante com geração estratégica
-            for (let i = games.length; i < numGames; i++) {
-                games.push({
-                    numbers: generateRandomGame(numsPerGame, hotNumbers, coldNumbers, idealEvenRatio, idealPrimes),
-                    isAI: false
-                });
-            }
-            
-            return games;
-        }
-        
-        // Faz previsões com o modelo treinado
-        async function predictWithModel(numsPerGame) {
-            // Gera uma entrada aleatória baseada na distribuição aprendida
-            const input = tf.randomNormal([1, 15, 1]);
-            
-            // Faz a previsão
-            const prediction = model.predict(input);
-            const predictedData = await prediction.data();
-            
-            // Processa os resultados
-            const predictedNumbers = Array.from(predictedData)
-                .map((val, idx) => ({ number: idx + 1, probability: val }))
-                .sort((a, b) => b.probability - a.probability)
-                .slice(0, numsPerGame)
-                .map(item => item.number)
-                .sort((a, b) => a - b);
-            
-            return predictedNumbers;
-        }
-        
-        // Gera um jogo aleatório com estratégias
-        function generateRandomGame(numsPerGame, hotNumbers, coldNumbers, idealEvenRatio, idealPrimes) {
-            const game = new Set();
-            const useColdNumbers = document.getElementById('useColdNumbers').checked;
-            const avoidRepeated = document.getElementById('avoidRepeated').checked;
-            
-            let attempts = 0;
-            let isUnique = false;
-            
-            while (!isUnique && attempts < 100) {
-                game.clear();
-                attempts++;
-                
-                // Adiciona números quentes
-                const hotToAdd = Math.min(10, Math.floor(numsPerGame * 0.7));
-                const shuffledHot = [...hotNumbers].sort(() => 0.5 - Math.random());
-                
-                for (let j = 0; j < hotToAdd && game.size < numsPerGame; j++) {
-                    game.add(shuffledHot[j]);
-                }
-                
-                // Adiciona números frios se habilitado
-                if (useColdNumbers && game.size < numsPerGame) {
-                    const coldToAdd = Math.min(3, numsPerGame - game.size);
-                    const shuffledCold = [...coldNumbers].sort(() => 0.5 - Math.random());
-                    
-                    for (let j = 0; j < coldToAdd && game.size < numsPerGame; j++) {
-                        game.add(shuffledCold[j]);
-                    }
-                }
-                
-                // Preenche com números aleatórios balanceados
-                while (game.size < numsPerGame) {
-                    const currentEven = [...game].filter(num => num % 2 === 0).length;
-                    const currentOdd = game.size - currentEven;
-                    const currentPrimes = [...game].filter(num => [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)).length;
-                    
-                    let num;
-                    if (currentEven / game.size < idealEvenRatio && game.size > 0) {
-                        num = (Math.floor(Math.random() * 12) * 2 + 2);
-                        if (num > 25) num = 24;
-                    } else if (currentOdd / game.size < (1 - idealEvenRatio) && game.size > 0) {
-                        num = (Math.floor(Math.random() * 12) * 2) + 1;
-                        if (num > 25) num = 25;
-                    } else {
-                        num = Math.floor(Math.random() * 25) + 1;
-                    }
-                    
-                    if (currentPrimes < idealPrimes && [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)) {
-                        game.add(num);
-                    } else if (currentPrimes >= idealPrimes && [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)) {
-                        continue;
-                    } else {
-                        game.add(num);
-                    }
-                }
-                
-                // Verifica se é único se necessário
-                if (avoidRepeated) {
-                    const sortedGame = Array.from(game).sort((a, b) => a - b);
-                    const gameStr = sortedGame.join(',');
-                    
-                    isUnique = !lotteryData.some(existingGame => {
-                        return existingGame.numbers.join(',') === gameStr;
-                    });
-                } else {
-                    isUnique = true;
-                }
-            }
-            
-            return Array.from(game).sort((a, b) => a - b);
-        }
-        
-        // Exibe uma página específica dos resultados
-        function displayResultsPage(page) {
-            const startIdx = (page - 1) * gamesPerPage;
-            const endIdx = startIdx + gamesPerPage;
-            const gamesToDisplay = allGeneratedGames.slice(startIdx, endIdx);
-            
-            const gamesContainer = document.getElementById('gamesContainer');
-            gamesContainer.innerHTML = '';
-            
-            gamesToDisplay.forEach((gameData, idx) => {
-                const globalIndex = startIdx + idx + 1;
-                gamesContainer.appendChild(createGameCard(gameData, globalIndex));
-            });
-            
-            updatePaginationControls();
-            updateChart(allGeneratedGames);
-            updateAppliedStrategies();
-            
-            document.getElementById('resultsSection').style.display = 'block';
-        }
-        
-        // Cria um card de jogo
-        function createGameCard(gameData, index) {
-            const game = gameData.numbers;
-            const isAI = gameData.isAI || false;
-            
-            const gameCard = document.createElement('div');
-            gameCard.className = 'game-card';
-            
-            const gameTitle = document.createElement('div');
-            gameTitle.className = 'game-title';
-            gameTitle.innerHTML = `Jogo ${index} ${isAI ? '<span class="game-ai">(IA)</span>' : ''}`;
-            
-            const numbersContainer = document.createElement('div');
-            numbersContainer.className = 'numbers-container';
-            
-            game.forEach(num => {
-                const numberElement = document.createElement('div');
-                numberElement.className = 'number';
-                if (num === 1) numberElement.classList.add('ball-1');
-                if (num === 15) numberElement.classList.add('ball-15');
-                if ([2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)) {
-                    numberElement.classList.add('prime');
-                }
-                numberElement.textContent = num;
-                numbersContainer.appendChild(numberElement);
-            });
-            
-            // Estatísticas
-            const evenCount = game.filter(num => num % 2 === 0).length;
-            const oddCount = game.length - evenCount;
-            const primesCount = game.filter(num => [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)).length;
-            const sum = game.reduce((a, b) => a + b, 0);
-            
-            const stats = document.createElement('div');
-            stats.className = 'stats';
-            stats.innerHTML = `
-                <div class="stat-item"><span>Pares:</span> <span>${evenCount}</span></div>
-                <div class="stat-item"><span>Ímpares:</span> <span>${oddCount}</span></div>
-                <div class="stat-item"><span>Primos:</span> <span>${primesCount}</span></div>
-                <div class="stat-item"><span>Soma:</span> <span>${sum}</span></div>
-            `;
-            
-            gameCard.appendChild(gameTitle);
-            gameCard.appendChild(numbersContainer);
-            gameCard.appendChild(stats);
-            
-            return gameCard;
-        }
-        
-        // Atualiza controles de paginação
-        function updatePaginationControls() {
-            const totalPages = Math.ceil(allGeneratedGames.length / gamesPerPage);
-            const paginationControls = document.getElementById('paginationControls');
-            const pageInfo = document.getElementById('pageInfo');
-            
-            if (allGeneratedGames.length > gamesPerPage) {
-                paginationControls.style.display = 'flex';
-                pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
-                document.getElementById('prevPage').disabled = currentPage <= 1;
-                document.getElementById('nextPage').disabled = currentPage >= totalPages;
+      }
+
+      // Função para atualizar dados reais
+      async function updateData() {
+        setProcessing(true);
+        logDiv.innerHTML = "";
+        gameDiv.innerHTML = "";
+        showProgress(true);
+        setProgress(0);
+        addLog("Iniciando atualização de dados reais...");
+
+        setProgress(10);
+        let caixaData = await fetchCaixaData();
+
+        // Tentar cache se a API falhar
+        if (!caixaData || caixaData.length === 0) {
+          addLog("Tentando carregar dados do cache...");
+          const cached = localStorage.getItem("data_lotofacil");
+          if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            const age = (Date.now() - timestamp) / (1000 * 60 * 60);
+            if (age < 48) {
+              caixaData = data;
+              addLog(`Dados carregados do cache: ${caixaData.length} sorteios.`);
             } else {
-                paginationControls.style.display = 'none';
+              addLog("Dados do cache expirados (mais de 48 horas).");
             }
+          }
         }
-        
-        // Atualiza o gráfico de distribuição
-        function updateChart(games) {
-            const ctx = document.getElementById('numbersChart').getContext('2d');
-            const frequency = Array(25).fill(0);
-            
-            games.forEach(gameData => {
-                gameData.numbers.forEach(num => {
-                    frequency[num - 1]++;
-                });
-            });
-            
-            if (numbersChart) {
-                numbersChart.data.datasets[0].data = frequency;
-                numbersChart.update();
-            } else {
-                numbersChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: Array.from({length: 25}, (_, i) => i + 1),
-                        datasets: [{
-                            label: 'Frequência nos Seus Jogos',
-                            data: frequency,
-                            backgroundColor: '#0066b3',
-                            borderColor: '#004d99',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Quantidade de vezes sorteado'
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Números da Lotofácil'
-                                }
-                            }
-                        }
-                    }
-                });
+
+        // Fallback para dados mínimos
+        if (!caixaData || caixaData.length === 0) {
+          addLog("Usando dados mínimos para continuar devido à falha na API e cache.");
+          caixaData = fallbackData;
+          addLog("Estes dados são temporários. Tente atualizar novamente para dados reais.");
+        }
+
+        historicalData = caixaData;
+
+        // Salvar no cache
+        localStorage.setItem("data_lotofacil", JSON.stringify({
+          data: caixaData,
+          timestamp: Date.now()
+        }));
+
+        setProgress(100);
+        addLog("Dados atualizados com sucesso!");
+        setTimeout(() => showProgress(false), 700);
+        setProcessing(false);
+      }
+
+      // Função para limpar cache
+      function clearCache() {
+        localStorage.removeItem("data_lotofacil");
+        historicalData = [];
+        probability = [];
+        gameDiv.innerHTML = "";
+        if (chartInstance) chartInstance.destroy();
+        addLog(`Cache limpo para ${lottery.name}.`);
+      }
+
+      // Função de treinamento da IA
+      async function trainModel() {
+        if (historicalData.length === 0) {
+          addLog(`Por favor, atualize os dados reais da ${lottery.name} primeiro.`);
+          return;
+        }
+        setProcessing(true);
+        logDiv.innerHTML = "";
+        gameDiv.innerHTML = "";
+        showProgress(true);
+        setProgress(0);
+        addLog(`Iniciando treinamento da IA para ${lottery.name} com L1 e L2...`);
+
+        // Cálculo de frequência
+        let freq = new Array(lottery.range).fill(0);
+        historicalData.forEach((draw) => {
+          draw.numbers.forEach((num) => {
+            if (num >= 1 && num <= lottery.range) {
+              freq[num - 1]++;
             }
-        }
-        
-        // Atualiza estratégias aplicadas
-        function updateAppliedStrategies() {
-            const appliedStrategies = document.getElementById('appliedStrategies');
-            appliedStrategies.innerHTML = '';
-            
-            const strategies = [];
-            if (document.getElementById('avoidRepeated').checked) strategies.push('Evitou combinações já sorteadas');
-            if (document.getElementById('balanceEvenOdd').checked) strategies.push('Balanceou pares e ímpares');
-            if (document.getElementById('usePrimes').checked) strategies.push('Incluiu 5-6 números primos');
-            if (document.getElementById('useHotNumbers').checked) strategies.push('Priorizou números quentes');
-            if (document.getElementById('useColdNumbers').checked) strategies.push('Incluiu alguns números frios');
-            if (isModelTrained) strategies.push('Usou previsões de IA LSTM');
-            
-            strategies.forEach(strategy => {
-                const li = document.createElement('li');
-                li.textContent = strategy;
-                appliedStrategies.appendChild(li);
-            });
-        }
-        
-        // Atualiza o status do modelo
-        function updateModelStatus(message, isTrained = false, isTraining = false) {
-            const statusElement = document.getElementById('modelStatus');
-            statusElement.textContent = message;
-            
-            if (isTraining) {
-                statusElement.className = 'model-status training';
-            } else if (isTrained) {
-                statusElement.className = 'model-status trained';
-                isModelTrained = true;
-            } else {
-                statusElement.className = 'model-status untrained';
-                isModelTrained = false;
-            }
-        }
-        
-        // Atualiza a barra de progresso
-        function updateProgressBar(percent) {
-            const progressBar = document.getElementById('progressBar');
-            progressBar.style.width = `${percent}%`;
-            progressBar.textContent = `${Math.round(percent)}%`;
-        }
-        
-        // Mostra/oculta loading
-        function showLoading(show, message = "") {
-            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
-            if (message) {
-                document.getElementById('loadingText').textContent = message;
-            }
-            document.getElementById('generateBtn').disabled = show;
-            document.getElementById('fetchDataBtn').disabled = show;
-            document.getElementById('trainModelBtn').disabled = show;
-        }
-        
-        // Mostra mensagem de erro
-        function showError(message) {
-            const errorContainer = document.getElementById('errorContainer');
-            const errorMessage = document.getElementById('errorMessage');
-            
-            errorMessage.textContent = message;
-            errorContainer.style.display = 'block';
-            document.getElementById('successContainer').style.display = 'none';
-        }
-        
-        // Mostra mensagem de sucesso
-        function showSuccess(message) {
-            const successContainer = document.getElementById('successContainer');
-            const successMessage = document.getElementById('successMessage');
-            
-            successMessage.textContent = message;
-            successContainer.style.display = 'block';
-            document.getElementById('errorContainer').style.display = 'none';
-        }
-        
-        // Exporta para TXT
-        function exportToTxt() {
-            if (allGeneratedGames.length === 0) {
-                showError("Nenhum jogo gerado para exportar.");
-                return;
-            }
-            
-            let txtContent = "Jogos da Lotofácil Gerados\n\n";
-            txtContent += `Data: ${new Date().toLocaleString()}\n`;
-            txtContent += `Quantidade de jogos: ${allGeneratedGames.length}\n`;
-            txtContent += `Números por jogo: ${document.getElementById('numsPerGame').value}\n`;
-            txtContent += `IA treinada: ${isModelTrained ? 'Sim' : 'Não'}\n\n`;
-            
-            allGeneratedGames.forEach((gameData, index) => {
-                txtContent += `Jogo ${index + 1}${gameData.isAI ? ' (IA)' : ''}: ${gameData.numbers.join(', ')}\n`;
-            });
-            
-            downloadFile(txtContent, 'text/plain', 'lotofacil_jogos.txt');
-        }
-        
-        // Exporta para CSV
-        function exportToCsv() {
-            if (allGeneratedGames.length === 0) {
-                showError("Nenhum jogo gerado para exportar.");
-                return;
-            }
-            
-            let csvContent = "Jogo,Números,IA\n";
-            allGeneratedGames.forEach((gameData, index) => {
-                csvContent += `Jogo ${index + 1},"${gameData.numbers.join(', ')}",${gameData.isAI ? 'Sim' : 'Não'}\n`;
-            });
-            
-            downloadFile(csvContent, 'text/csv', 'lotofacil_jogos.csv');
-        }
-        
-        // Função auxiliar para download
-        function downloadFile(content, mimeType, filename) {
-            const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        // Imprime os jogos
-        function printGames() {
-            if (allGeneratedGames.length === 0) {
-                showError("Nenhum jogo gerado para imprimir.");
-                return;
-            }
-            
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Jogos Lotofácil</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 20px; }
-                            h1 { color: #0066b3; text-align: center; }
-                            .game { margin-bottom: 20px; page-break-inside: avoid; }
-                            .numbers { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
-                            .number { 
-                                width: 30px; height: 30px; border-radius: 50%; 
-                                background-color: #0066b3; color: white; 
-                                display: flex; align-items: center; justify-content: center; 
-                                font-weight: bold; 
-                            }
-                            .prime { background-color: #5cb85c; }
-                            .ball-1 { background-color: #f0ad4e; }
-                            .ball-15 { background-color: #d9534f; }
-                            .stats { font-size: 0.9em; color: #666; }
-                            .stat-item { display: flex; justify-content: space-between; width: 150px; }
-                            .ai-label { color: #5cb85c; font-weight: bold; }
-                            @media print {
-                                .no-print { display: none; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>Jogos Lotofácil Gerados</h1>
-                        <p><strong>Data:</strong> ${new Date().toLocaleString()}</p>
-                        <p><strong>Quantidade de jogos:</strong> ${allGeneratedGames.length}</p>
-                        <p><strong>Números por jogo:</strong> ${document.getElementById('numsPerGame').value}</p>
-                        <p><strong>IA treinada:</strong> ${isModelTrained ? 'Sim' : 'Não'}</p>
-                        
-                        <div class="no-print">
-                            <button onclick="window.print()">Imprimir</button>
-                            <button onclick="window.close()">Fechar</button>
-                        </div>
-                        
-                        ${allGeneratedGames.map((gameData, index) => `
-                            <div class="game">
-                                <h3>Jogo ${index + 1}${gameData.isAI ? ' <span class="ai-label">(IA)</span>' : ''}</h3>
-                                <div class="numbers">
-                                    ${gameData.numbers.map(num => {
-                                        let className = 'number';
-                                        if (num === 1) className += ' ball-1';
-                                        if (num === 15) className += ' ball-15';
-                                        if ([2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)) className += ' prime';
-                                        return `<div class="${className}">${num}</div>`;
-                                    }).join('')}
-                                </div>
-                                <div class="stats">
-                                    <div class="stat-item">
-                                        <span>Pares:</span>
-                                        <span>${gameData.numbers.filter(num => num % 2 === 0).length}</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Ímpares:</span>
-                                        <span>${gameData.numbers.length - gameData.numbers.filter(num => num % 2 === 0).length}</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Primos:</span>
-                                        <span>${gameData.numbers.filter(num => [2, 3, 5, 7, 11, 13, 17, 19, 23].includes(num)).length}</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Soma:</span>
-                                        <span>${gameData.numbers.reduce((a, b) => a + b, 0)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
-        
-        // Navega para a página anterior
-        function prevPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                displayResultsPage(currentPage);
-            }
-        }
-        
-        // Navega para a próxima página
-        function nextPage() {
-            const totalPages = Math.ceil(allGeneratedGames.length / gamesPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                displayResultsPage(currentPage);
-            }
-        }
-        
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            // Configura eventos
-            document.getElementById('generateBtn').addEventListener('click', generateGames);
-            document.getElementById('fetchDataBtn').addEventListener('click', fetchLatestData);
-            document.getElementById('trainModelBtn').addEventListener('click', trainModel);
-            document.getElementById('prevPage').addEventListener('click', prevPage);
-            document.getElementById('nextPage').addEventListener('click', nextPage);
-            
-            // Carrega dados iniciais
-            loadLotteryData();
-            updateModelStatus("IA não treinada");
+          });
         });
+
+        // Regularização L1 e L2
+        const lambda1 = 0.01;
+        const lambda2 = 0.01;
+        let probL1 = new Array(lottery.range).fill(0);
+        let probL2 = new Array(lottery.range).fill(0);
+        const total = freq.reduce((acc, curr) => acc + curr, 0) || 1;
+
+        // L1
+        freq.forEach((f, i) => {
+          probL1[i] = Math.max(0, f / total - lambda1);
+        });
+        const sumL1 = probL1.reduce((acc, curr) => acc + curr, 0);
+        probL1 = probL1.map((p) => (sumL1 ? p / sumL1 : 1 / lottery.range));
+
+        // L2
+        freq.forEach((f, i) => {
+          probL2[i] = f / total / (1 + lambda2 * f);
+        });
+        const sumL2 = probL2.reduce((acc, curr) => acc + curr, 0);
+        probL2 = probL2.map((p) => (sumL2 ? p / sumL2 : 1 / lottery.range));
+
+        // Combinar
+        probability = probL1.map((p1, i) => 0.5 * p1 + 0.5 * probL2[i]);
+
+        // Simulação de etapas
+        const steps = [
+          { delay: 500, message: "Aplicando regularização L1..." },
+          { delay: 800, message: "Aplicando regularização L2..." },
+          { delay: 800, message: "Combinando probabilidades..." },
+          { delay: 500, message: "Finalizando treinamento..." }
+        ];
+
+        let progress = 10;
+        for (const step of steps) {
+          await new Promise((resolve) => setTimeout(resolve, step.delay));
+          progress += 20;
+          setProgress(progress);
+          addLog(step.message);
+        }
+
+        addLog("Treinamento concluído com sucesso!");
+        setProgress(100);
+        setTimeout(() => showProgress(false), 700);
+        updateChart();
+        setProcessing(false);
+      }
+
+      // Função para atualizar o gráfico
+      function updateChart() {
+        const ctx = document.getElementById("chart").getContext("2d");
+        const labels = Array.from({ length: lottery.range }, (_, i) => i + 1);
+
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: `Probabilidade de Acerto (${lottery.name})`,
+                data: probability,
+                backgroundColor: "rgba(255, 220, 0, 0.7)",
+                borderColor: "rgba(255, 220, 0, 1)",
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: { title: { display: true, text: "Número" } },
+              y: { title: { display: true, text: "Probabilidade" }, beginAtZero: true }
+            }
+          }
+        });
+      }
+
+      // Seleção ponderada
+      function weightedRandom(probabilities) {
+        let sum = 0;
+        let r = Math.random();
+        for (let i = 0; i < probabilities.length; i++) {
+          sum += probabilities[i];
+          if (r <= sum) return i + 1;
+        }
+        return Math.floor(Math.random() * probabilities.length) + 1;
+      }
+
+      // Função para gerar um jogo
+      function generateGame() {
+        if (probability.length !== lottery.range || probability.every((p) => p === 0)) {
+          addLog(`Por favor, treine a IA para ${lottery.name} primeiro.`);
+          return;
+        }
+        setProcessing(true);
+        let gameNumbers = [];
+
+        // Gerar números
+        while (gameNumbers.length < lottery.numbers) {
+          let num = weightedRandom(probability);
+          if (!gameNumbers.includes(num) && num >= 1 && num <= lottery.range) {
+            gameNumbers.push(num);
+          }
+        }
+        gameNumbers.sort((a, b) => a - b);
+
+        // Calcular índice de confiança
+        let confidence = gameNumbers.reduce((sum, num) => sum + probability[num - 1], 0);
+        const maxConfidence = probability
+          .slice()
+          .sort((a, b) => b - a)
+          .slice(0, lottery.numbers)
+          .reduce((sum, p) => sum + p, 0);
+        confidence = maxConfidence ? (confidence / maxConfidence) * 100 : 0;
+        confidence = Math.round(confidence * 10) / 10;
+
+        displayGame(gameNumbers, confidence);
+        addLog(`Jogo gerado com sucesso! Confiança da IA: ${confidence}%`);
+        setProcessing(false);
+      }
+
+      // Exibe o jogo
+      function displayGame(numbers, confidence) {
+        gameDiv.innerHTML = `<h2>Seu Jogo (${lottery.name}):</h2>`;
+        const gameContainer = document.createElement("div");
+
+        numbers.forEach((num) => {
+          const span = document.createElement("span");
+          span.className = "number";
+          span.innerText = num.toString().padStart(2, "0");
+          gameContainer.appendChild(span);
+        });
+
+        const confidenceSpan = document.createElement("span");
+        confidenceSpan.className = "confidence";
+        confidenceSpan.innerText = `Confiança da IA: ${confidence}%`;
+        gameContainer.appendChild(confidenceSpan);
+
+        gameDiv.appendChild(gameContainer);
+      }
+
+      // Efeito Matrix
+      const matrixCanvas = document.getElementById("matrixCanvas");
+      const ctx = matrixCanvas.getContext("2d");
+
+      matrixCanvas.height = window.innerHeight;
+      matrixCanvas.width = window.innerWidth;
+
+      const numbers = "0123456789";
+      const fontSize = 14;
+      const columns = Math.floor(matrixCanvas.width / fontSize);
+      const drops = Array(columns).fill(1);
+
+      function drawMatrix() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+        ctx.fillStyle = "#0f0";
+        ctx.font = fontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = numbers.charAt(Math.floor(Math.random() * numbers.length));
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      let matrixInterval = setInterval(drawMatrix, 33);
+
+      // Ajustar canvas no redimensionamento
+      window.addEventListener("resize", () => {
+        matrixCanvas.height = window.innerHeight;
+        matrixCanvas.width = window.innerWidth;
+        const newColumns = Math.floor(matrixCanvas.width / fontSize);
+        while (drops.length < newColumns) drops.push(1);
+        while (drops.length > newColumns) drops.pop();
+      });
+
+      // Inicializar
+      addLog(`Loteria: ${lottery.name}`);
+      addLog(`Regras: ${lottery.rules}`);
+
+      // Carregar cache
+      const cached = localStorage.getItem("data_lotofacil");
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = (Date.now() - timestamp) / (1000 * 60 * 60);
+        if (age < 48) {
+          historicalData = data;
+          addLog(`Dados carregados do cache: ${historicalData.length} sorteios.`);
+        } else {
+          addLog("Dados do cache expirados (mais de 48 horas). Atualize os dados reais.");
+        }
+      }
+
+      // Eventos dos botões
+      updateBtn.addEventListener("click", updateData);
+      trainBtn.addEventListener("click", trainModel);
+      generateBtn.addEventListener("click", generateGame);
+      clearCacheBtn.addEventListener("click", clearCache);
     </script>
-</body>
+  </body>
 </html>
