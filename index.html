@@ -67,19 +67,38 @@
         background-color: #999;
         cursor: not-allowed;
       }
+      input[type="number"] {
+        background-color: #ffdc00;
+        color: #333;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        font-size: 1em;
+        margin: 10px;
+        width: 80px;
+        text-align: center;
+      }
+      input[type="number"]::-webkit-inner-spin-button {
+        opacity: 1;
+      }
       .progress {
         background-color: rgba(255, 255, 255, 0.2);
         border-radius: 20px;
         overflow: hidden;
-        margin: 20px auto;
+        margin: 10px auto;
         width: 80%;
         height: 20px;
+      }
+      .progress-label {
+        font-size: 1em;
+        color: #ffdc00;
+        margin: 5px 0;
       }
       .progress-bar {
         height: 100%;
         width: 0%;
         background-color: #ffdc00;
-        transition: width 0.5s ease-in-out;
+        transition: width 0.2s ease-in-out;
       }
       .log {
         background: rgba(0, 0, 0, 0.3);
@@ -96,6 +115,9 @@
         font-size: 2em;
         font-weight: 700;
       }
+      .game-container {
+        margin-bottom: 20px;
+      }
       .number {
         display: inline-block;
         background-color: #ffdc00;
@@ -111,9 +133,14 @@
       }
       .confidence {
         display: block;
-        margin-top: 15px;
+        margin-top: 10px;
         font-size: 1.2em;
         color: #00ccff;
+      }
+      .set-progress {
+        margin: 15px 0;
+        font-size: 1.2em;
+        color: #ffdc00;
       }
       canvas {
         margin-top: 40px;
@@ -143,10 +170,28 @@
         <button id="trainBtn">Treinar IA (L1 e L2)</button>
         <button id="generateBtn">Gerar Jogo Inteligente</button>
         <button id="clearCacheBtn">Limpar Cache</button>
+        <input
+          type="number"
+          id="numGames"
+          min="1"
+          max="10"
+          value="1"
+          title="Quantidade de jogos (1 a 10)"
+        />
       </div>
       <div id="progressContainer" class="progress" style="display: none;">
+        <div class="progress-label">Progresso Geral</div>
         <div id="progressBar" class="progress-bar"></div>
       </div>
+      <div id="l1ProgressContainer" class="progress" style="display: none;">
+        <div class="progress-label">Regularização L1</div>
+        <div id="l1ProgressBar" class="progress-bar"></div>
+      </div>
+      <div id="l2ProgressContainer" class="progress" style="display: none;">
+        <div class="progress-label">Regularização L2</div>
+        <div id="l2ProgressBar" class="progress-bar"></div>
+      </div>
+      <div id="setProgress" class="set-progress"></div>
       <div id="log" class="log"></div>
       <div id="game" class="game"></div>
       <canvas id="chart" width="800" height="400"></canvas>
@@ -156,16 +201,25 @@
       // Elementos da interface
       const logDiv = document.getElementById("log");
       const progressBar = document.getElementById("progressBar");
+      const l1ProgressBar = document.getElementById("l1ProgressBar");
+      const l2ProgressBar = document.getElementById("l2ProgressBar");
       const progressContainer = document.getElementById("progressContainer");
+      const l1ProgressContainer = document.getElementById("l1ProgressContainer");
+      const l2ProgressContainer = document.getElementById("l2ProgressContainer");
+      const setProgressDiv = document.getElementById("setProgress");
       const gameDiv = document.getElementById("game");
       const updateBtn = document.getElementById("updateBtn");
       const trainBtn = document.getElementById("trainBtn");
       const generateBtn = document.getElementById("generateBtn");
       const clearCacheBtn = document.getElementById("clearCacheBtn");
+      const numGamesInput = document.getElementById("numGames");
       let historicalData = [];
       let probability = [];
       let chartInstance = null;
       let isProcessing = false;
+      let currentSet = 1;
+      let successfulSets = 0;
+      let latestDraw = null;
 
       // Configuração da Lotofácil
       const lottery = {
@@ -193,13 +247,18 @@
         logDiv.scrollTop = logDiv.scrollHeight;
       }
 
-      // Atualiza a barra de progresso
-      function setProgress(value) {
-        progressBar.style.width = value + "%";
+      // Atualiza as barras de progresso
+      function setProgress(bar, value) {
+        bar.style.width = `${value}%`;
       }
 
-      function showProgress(show) {
-        progressContainer.style.display = show ? "block" : "none";
+      function showProgress(container, show) {
+        container.style.display = show ? "block" : "none";
+      }
+
+      // Atualiza o progresso dos conjuntos
+      function updateSetProgress() {
+        setProgressDiv.innerText = `Conjunto ${currentSet} - Sucessos consecutivos: ${successfulSets}/3`;
       }
 
       // Controla estado dos botões
@@ -209,6 +268,7 @@
         trainBtn.disabled = state;
         generateBtn.disabled = state;
         clearCacheBtn.disabled = state;
+        numGamesInput.disabled = state;
       }
 
       // Função para buscar dados reais da API com retries
@@ -258,7 +318,7 @@
               return null;
             }
             attempt++;
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Espera 1s antes de tentar novamente
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
       }
@@ -268,14 +328,13 @@
         setProcessing(true);
         logDiv.innerHTML = "";
         gameDiv.innerHTML = "";
-        showProgress(true);
-        setProgress(0);
+        showProgress(progressContainer, true);
+        setProgress(progressBar, 0);
         addLog("Iniciando atualização de dados reais...");
 
-        setProgress(10);
+        setProgress(progressBar, 10);
         let caixaData = await fetchCaixaData();
 
-        // Tentar cache se a API falhar
         if (!caixaData || caixaData.length === 0) {
           addLog("Tentando carregar dados do cache...");
           const cached = localStorage.getItem("data_lotofacil");
@@ -291,7 +350,6 @@
           }
         }
 
-        // Fallback para dados mínimos
         if (!caixaData || caixaData.length === 0) {
           addLog("Usando dados mínimos para continuar devido à falha na API e cache.");
           caixaData = fallbackData;
@@ -299,17 +357,18 @@
         }
 
         historicalData = caixaData;
+        latestDraw = caixaData[0];
 
-        // Salvar no cache
         localStorage.setItem("data_lotofacil", JSON.stringify({
           data: caixaData,
           timestamp: Date.now()
         }));
 
-        setProgress(100);
+        setProgress(progressBar, 100);
         addLog("Dados atualizados com sucesso!");
-        setTimeout(() => showProgress(false), 700);
+        setTimeout(() => showProgress(progressContainer, false), 700);
         setProcessing(false);
+        updateSetProgress();
       }
 
       // Função para limpar cache
@@ -317,12 +376,41 @@
         localStorage.removeItem("data_lotofacil");
         historicalData = [];
         probability = [];
+        latestDraw = null;
+        currentSet = 1;
+        successfulSets = 0;
         gameDiv.innerHTML = "";
+        setProgressDiv.innerText = "";
         if (chartInstance) chartInstance.destroy();
         addLog(`Cache limpo para ${lottery.name}.`);
       }
 
-      // Função de treinamento da IA
+      // Função para combinar probabilidades com validação
+      function combineProbabilities(probL1, probL2) {
+        addLog("Iniciando combinação de probabilidades...");
+        try {
+          const result = probL1.map((p1, i) => {
+            const p2 = probL2[i];
+            if (isNaN(p1) || isNaN(p2)) {
+              addLog(`Aviso: Valor inválido detectado (L1: ${p1}, L2: ${p2}) no índice ${i}. Usando 0.`);
+              return 0;
+            }
+            return 0.5 * p1 + 0.5 * p2;
+          });
+          const sum = result.reduce((acc, curr) => acc + curr, 0);
+          if (sum === 0) {
+            addLog("Erro: Soma das probabilidades é zero. Usando distribuição uniforme.");
+            return Array(lottery.range).fill(1 / lottery.range);
+          }
+          addLog("Combinação de probabilidades concluída.");
+          return result;
+        } catch (error) {
+          addLog(`Erro ao combinar probabilidades: ${error.message}`);
+          return Array(lottery.range).fill(1 / lottery.range);
+        }
+      }
+
+      // Função de treinamento da IA com barras otimizadas
       async function trainModel() {
         if (historicalData.length === 0) {
           addLog(`Por favor, atualize os dados reais da ${lottery.name} primeiro.`);
@@ -331,11 +419,14 @@
         setProcessing(true);
         logDiv.innerHTML = "";
         gameDiv.innerHTML = "";
-        showProgress(true);
-        setProgress(0);
-        addLog(`Iniciando treinamento da IA para ${lottery.name} com L1 e L2...`);
+        showProgress(progressContainer, true);
+        showProgress(l1ProgressContainer, false);
+        showProgress(l2ProgressContainer, false);
+        setProgress(progressBar, 0);
+        addLog(`Iniciando treinamento da IA para ${lottery.name} - Conjunto ${currentSet}...`);
 
-        // Cálculo de frequência
+        // Etapa 1: Cálculo de frequência
+        addLog("Calculando frequência dos números...");
         let freq = new Array(lottery.range).fill(0);
         historicalData.forEach((draw) => {
           draw.numbers.forEach((num) => {
@@ -344,52 +435,135 @@
             }
           });
         });
+        await new Promise((resolve) => setTimeout(() => {
+          setProgress(progressBar, 20);
+          resolve();
+        }, 300));
 
-        // Regularização L1 e L2
+        // Etapa 2: Regularização L1
+        showProgress(l1ProgressContainer, true);
+        setProgress(l1ProgressBar, 0);
+        addLog("Iniciando regularização L1...");
         const lambda1 = 0.01;
-        const lambda2 = 0.01;
         let probL1 = new Array(lottery.range).fill(0);
-        let probL2 = new Array(lottery.range).fill(0);
         const total = freq.reduce((acc, curr) => acc + curr, 0) || 1;
 
-        // L1
         freq.forEach((f, i) => {
           probL1[i] = Math.max(0, f / total - lambda1);
         });
         const sumL1 = probL1.reduce((acc, curr) => acc + curr, 0);
         probL1 = probL1.map((p) => (sumL1 ? p / sumL1 : 1 / lottery.range));
 
-        // L2
+        await animateProgress(l1ProgressBar, 100, 800);
+        showProgress(l1ProgressContainer, false);
+        await new Promise((resolve) => setTimeout(() => {
+          setProgress(progressBar, 40);
+          resolve();
+        }, 200));
+
+        // Etapa 3: Regularização L2
+        showProgress(l2ProgressContainer, true);
+        setProgress(l2ProgressBar, 0);
+        addLog("Iniciando regularização L2...");
+        const lambda2 = 0.01;
+        let probL2 = new Array(lottery.range).fill(0);
+
         freq.forEach((f, i) => {
           probL2[i] = f / total / (1 + lambda2 * f);
         });
         const sumL2 = probL2.reduce((acc, curr) => acc + curr, 0);
         probL2 = probL2.map((p) => (sumL2 ? p / sumL2 : 1 / lottery.range));
 
-        // Combinar
-        probability = probL1.map((p1, i) => 0.5 * p1 + 0.5 * probL2[i]);
+        await animateProgress(l2ProgressBar, 100, 800);
+        showProgress(l2ProgressContainer, false);
+        await new Promise((resolve) => setTimeout(() => {
+          setProgress(progressBar, 60);
+          resolve();
+        }, 200));
 
-        // Simulação de etapas
-        const steps = [
-          { delay: 500, message: "Aplicando regularização L1..." },
-          { delay: 800, message: "Aplicando regularização L2..." },
-          { delay: 800, message: "Combinando probabilidades..." },
-          { delay: 500, message: "Finalizando treinamento..." }
-        ];
+        // Etapa 4: Combinar probabilidades
+        probability = combineProbabilities(probL1, probL2);
+        await new Promise((resolve) => setTimeout(() => {
+          setProgress(progressBar, 80);
+          resolve();
+        }, 300));
 
-        let progress = 10;
-        for (const step of steps) {
-          await new Promise((resolve) => setTimeout(resolve, step.delay));
-          progress += 20;
-          setProgress(progress);
-          addLog(step.message);
+        // Etapa 5: Testar conjunto de jogos
+        addLog("Testando conjunto de jogos...");
+        const testGames = [];
+        let usedNumbers = [];
+        for (let i = 0; i < 10; i++) {
+          const game = generateSingleGame(usedNumbers);
+          testGames.push({ index: i + 1, ...game });
+          usedNumbers = usedNumbers.concat(game.numbers);
         }
 
-        addLog("Treinamento concluído com sucesso!");
-        setProgress(100);
-        setTimeout(() => showProgress(false), 700);
+        let gamesWith13Plus = 0;
+        testGames.forEach((game) => {
+          const hits = latestDraw
+            ? game.numbers.filter((num) => latestDraw.numbers.includes(num)).length
+            : 0;
+          game.hits = hits;
+          if (hits >= 13) gamesWith13Plus++;
+          addLog(`Jogo de teste ${game.index}: ${hits} acertos`);
+        });
+
+        addLog(`Conjunto ${currentSet}: ${gamesWith13Plus}/10 jogos com 13+ acertos`);
+
+        if (gamesWith13Plus >= 8) {
+          addLog(`Conjunto ${currentSet} bem-sucedido! Avançando...`);
+          successfulSets++;
+          currentSet++;
+          if (successfulSets >= 3) {
+            addLog("IA considerada bem assertiva (3 sucessos consecutivos)!");
+          }
+        } else {
+          addLog(`Conjunto ${currentSet} insuficiente. Ajustando probabilidades...`);
+          successfulSets = 0;
+          if (latestDraw) {
+            const boost = 0.1;
+            latestDraw.numbers.forEach((num) => {
+              if (num >= 1 && num <= lottery.range) {
+                probability[num - 1] = probability[num - 1] * (1 + boost);
+              }
+            });
+            const sum = probability.reduce((acc, curr) => acc + curr, 0);
+            probability = probability.map((p) => (sum ? p / sum : 1 / lottery.range));
+          }
+        }
+
+        addLog("Treinamento concluído!");
+        await new Promise((resolve) => setTimeout(() => {
+          setProgress(progressBar, 100);
+          resolve();
+        }, 300));
+        setTimeout(() => showProgress(progressContainer, false), 700);
         updateChart();
+        updateSetProgress();
         setProcessing(false);
+      }
+
+      // Função para animar progresso com requestAnimationFrame
+      function animateProgress(bar, target, duration) {
+        return new Promise((resolve) => {
+          const start = performance.now();
+          const initial = parseFloat(bar.style.width) || 0;
+
+          function step(timestamp) {
+            const elapsed = timestamp - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const value = initial + (target - initial) * progress;
+            setProgress(bar, value);
+
+            if (progress < 1) {
+              requestAnimationFrame(step);
+            } else {
+              resolve();
+            }
+          }
+
+          requestAnimationFrame(step);
+        });
       }
 
       // Função para atualizar o gráfico
@@ -422,36 +596,47 @@
       }
 
       // Seleção ponderada
-      function weightedRandom(probabilities) {
+      function weightedRandom(probabilities, exclude = []) {
         let sum = 0;
         let r = Math.random();
         for (let i = 0; i < probabilities.length; i++) {
-          sum += probabilities[i];
-          if (r <= sum) return i + 1;
+          if (!exclude.includes(i + 1)) {
+            sum += probabilities[i];
+            if (r <= sum) return i + 1;
+          }
         }
-        return Math.floor(Math.random() * probabilities.length) + 1;
+        let available = Array.from({ length: probabilities.length }, (_, i) => i + 1)
+          .filter((n) => !exclude.includes(n));
+        return available[Math.floor(Math.random() * available.length)] || 1;
       }
 
       // Função para gerar um jogo
-      function generateGame() {
-        if (probability.length !== lottery.range || probability.every((p) => p === 0)) {
-          addLog(`Por favor, treine a IA para ${lottery.name} primeiro.`);
-          return;
-        }
-        setProcessing(true);
+      function generateSingleGame(exclude = []) {
         let gameNumbers = [];
+        let attempts = 0;
+        const maxAttempts = 1000;
 
-        // Gerar números
-        while (gameNumbers.length < lottery.numbers) {
-          let num = weightedRandom(probability);
+        while (gameNumbers.length < lottery.numbers && attempts < maxAttempts) {
+          let num = weightedRandom(probability, exclude);
           if (!gameNumbers.includes(num) && num >= 1 && num <= lottery.range) {
             gameNumbers.push(num);
           }
+          attempts++;
         }
+
+        if (gameNumbers.length < lottery.numbers) {
+          addLog("Aviso: Não foi possível gerar jogo completo. Preenchendo com números aleatórios.");
+          while (gameNumbers.length < lottery.numbers) {
+            const num = Math.floor(Math.random() * lottery.range) + 1;
+            if (!gameNumbers.includes(num)) {
+              gameNumbers.push(num);
+            }
+          }
+        }
+
         gameNumbers.sort((a, b) => a - b);
 
-        // Calcular índice de confiança
-        let confidence = gameNumbers.reduce((sum, num) => sum + probability[num - 1], 0);
+        let confidence = gameNumbers.reduce((sum, num) => sum + (probability[num - 1] || 0), 0);
         const maxConfidence = probability
           .slice()
           .sort((a, b) => b - a)
@@ -460,29 +645,86 @@
         confidence = maxConfidence ? (confidence / maxConfidence) * 100 : 0;
         confidence = Math.round(confidence * 10) / 10;
 
-        displayGame(gameNumbers, confidence);
-        addLog(`Jogo gerado com sucesso! Confiança da IA: ${confidence}%`);
+        return { numbers: gameNumbers, confidence };
+      }
+
+      // Função para gerar múltiplos jogos
+      function generateGames() {
+        if (probability.length !== lottery.range || probability.every((p) => p === 0)) {
+          addLog(`Por favor, treine a IA para ${lottery.name} primeiro.`);
+          return;
+        }
+        setProcessing(true);
+        gameDiv.innerHTML = "";
+
+        let numGames = parseInt(numGamesInput.value);
+        if (isNaN(numGames) || numGames < 1) {
+          numGames = 1;
+          numGamesInput.value = 1;
+          addLog("Quantidade inválida. Gerando 1 jogo.");
+        } else if (numGames > 10) {
+          numGames = 10;
+          numGamesInput.value = 10;
+          addLog("Máximo de 10 jogos permitido. Gerando 10 jogos.");
+        }
+
+        const allGames = [];
+        let usedNumbers = [];
+
+        for (let i = 0; i < numGames; i++) {
+          const game = generateSingleGame(usedNumbers);
+          allGames.push({ index: i + 1, ...game });
+          usedNumbers = usedNumbers.concat(game.numbers);
+        }
+
+        if (latestDraw) {
+          allGames.forEach((game) => {
+            const hits = game.numbers.filter((num) => latestDraw.numbers.includes(num)).length;
+            game.hits = hits;
+          });
+        }
+
+        displayGames(allGames);
+        addLog(`${numGames} jogo(s) gerado(s) com sucesso!`);
         setProcessing(false);
       }
 
-      // Exibe o jogo
-      function displayGame(numbers, confidence) {
-        gameDiv.innerHTML = `<h2>Seu Jogo (${lottery.name}):</h2>`;
-        const gameContainer = document.createElement("div");
+      // Exibe os jogos
+      function displayGames(games) {
+        gameDiv.innerHTML = `<h2>Seus Jogos (${lottery.name}):</h2>`;
+        games.forEach((game) => {
+          const gameContainer = document.createElement("div");
+          gameContainer.className = "game-container";
 
-        numbers.forEach((num) => {
-          const span = document.createElement("span");
-          span.className = "number";
-          span.innerText = num.toString().padStart(2, "0");
-          gameContainer.appendChild(span);
+          const title = document.createElement("h3");
+          title.innerText = `Jogo ${game.index}:`;
+          gameContainer.appendChild(title);
+
+          game.numbers.forEach((num) => {
+            const span = document.createElement("span");
+            span.className = "number";
+            span.innerText = num.toString().padStart(2, "0");
+            gameContainer.appendChild(span);
+          });
+
+          const confidenceSpan = document.createElement("span");
+          confidenceSpan.className = "confidence";
+          confidenceSpan.innerText = `Confiança: ${game.confidence}%`;
+          gameContainer.appendChild(confidenceSpan);
+
+          if (game.hits !== undefined) {
+            const hitsSpan = document.createElement("span");
+            hitsSpan.className = "confidence";
+            hitsSpan.innerText = `Acertos (último sorteio): ${game.hits}`;
+            gameContainer.appendChild(hitsSpan);
+          }
+
+          gameDiv.appendChild(gameContainer);
+          addLog(
+            `Jogo ${game.index}: ${game.numbers.join(", ")} - Confiança: ${game.confidence}%` +
+            (game.hits !== undefined ? ` - Acertos: ${game.hits}` : "")
+          );
         });
-
-        const confidenceSpan = document.createElement("span");
-        confidenceSpan.className = "confidence";
-        confidenceSpan.innerText = `Confiança da IA: ${confidence}%`;
-        gameContainer.appendChild(confidenceSpan);
-
-        gameDiv.appendChild(gameContainer);
       }
 
       // Efeito Matrix
@@ -517,7 +759,6 @@
 
       let matrixInterval = setInterval(drawMatrix, 33);
 
-      // Ajustar canvas no redimensionamento
       window.addEventListener("resize", () => {
         matrixCanvas.height = window.innerHeight;
         matrixCanvas.width = window.innerWidth;
@@ -530,23 +771,24 @@
       addLog(`Loteria: ${lottery.name}`);
       addLog(`Regras: ${lottery.rules}`);
 
-      // Carregar cache
       const cached = localStorage.getItem("data_lotofacil");
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         const age = (Date.now() - timestamp) / (1000 * 60 * 60);
         if (age < 48) {
           historicalData = data;
+          latestDraw = data[0];
           addLog(`Dados carregados do cache: ${historicalData.length} sorteios.`);
         } else {
           addLog("Dados do cache expirados (mais de 48 horas). Atualize os dados reais.");
         }
       }
 
-      // Eventos dos botões
+      updateSetProgress();
+
       updateBtn.addEventListener("click", updateData);
       trainBtn.addEventListener("click", trainModel);
-      generateBtn.addEventListener("click", generateGame);
+      generateBtn.addEventListener("click", generateGames);
       clearCacheBtn.addEventListener("click", clearCache);
     </script>
   </body>
